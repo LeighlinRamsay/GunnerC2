@@ -277,7 +277,7 @@ class ShellProtocol(TransferProtocol):
 			"bash -lc "
 			f"\"set -euo pipefail; "
 			f"printf '%s' '{chunk_b64}' | base64 -d | "
-			f"dd of={_linux_shq(st.remote_path)} bs=1M seek={offset} conv=notrunc status=none\""
+			f"dd of={_linux_shq(st.remote_path)} bs=1 seek={offset} conv=notrunc status=none\""
 		)
 		try:
 			self._run_cmd(st.sid, cmd, st.transport, self.op_id)
