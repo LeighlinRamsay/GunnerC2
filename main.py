@@ -209,6 +209,7 @@ def process_command(user: str, to_console: bool = True, to_op: str = None):
 	to_console: print to local terminal?
 	to_op:    operator ID to reply to (if any)
 	"""
+	global search_results, current_module
 	set_output_context(to_console=to_console, to_op=to_op, world_wide=False)
 
 	def printer(msg, color=None):
