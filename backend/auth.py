@@ -1,10 +1,10 @@
 # backend/auth.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 
 from core.teamserver import auth_manager as auth
 
-from .dependencies import create_access_token
+from .dependencies import create_access_token, get_current_user, get_current_admin
 from .schemas import LoginRequest, TokenResponse, OperatorCreate, OperatorOut, OperatorUpdate
 
 router = APIRouter()
@@ -110,7 +110,7 @@ def login(body: LoginRequest):
 
 
 @router.get("/operators", response_model=list[OperatorOut])
-def list_operators():
+def list_operators(user: dict = Depends(get_current_user)):
     ops = auth.list_operators() or []
     return [{"id": o.get("id") or o.get("uuid") or o.get("op_id"),
              "username": o.get("username", ""),
@@ -118,16 +118,18 @@ def list_operators():
 
 
 @router.post("/operators", response_model=OperatorOut)
-def add_operator(body: OperatorCreate):
+def add_operator(body: OperatorCreate, user: dict = Depends(get_current_admin)):
     try:
         oid = auth.add_operator(body.username, body.password, body.role)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    if not oid or not isinstance(oid, str) or len(oid) < 30:
+        raise HTTPException(status_code=400, detail=str(oid))
     return {"id": oid, "username": body.username, "role": body.role}
 
 
 @router.delete("/operators/{operator_id}")
-def delete_operator(operator_id: str):
+def delete_operator(operator_id: str, user: dict = Depends(get_current_admin)):
     ok = auth.delete_operator(operator_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Operator not found")
