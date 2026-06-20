@@ -184,14 +184,13 @@ async def operators_ws(ws: WebSocket):
     # Connection auth state (None until verified)
     claims: Optional[dict] = None
 
-    # 1) Try JWT from query string, else remain unauthenticated until "login"
     token = ws.query_params.get("token")
     if token:
         try:
             claims = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         except jwt.InvalidTokenError:
-            # invalid token → remain unauthenticated; client may send a login action
-            claims = None
+            await ws.close(code=4001)
+            return
 
     # writer pushes only once authenticated
     last_hash = None
@@ -229,10 +228,13 @@ async def operators_ws(ws: WebSocket):
 
             act = (req.get("action") or "").lower()
             if act == "login":
-                # handle login inline so we can set claims
                 norm = await _cmd_login(ws, req)
                 if isinstance(norm, dict):
                     claims = {"sub": norm["id"], "username": norm["username"], "role": norm["role"]}
+                continue
+
+            if act != "ping" and not claims:
+                await _ws_send(ws, {"type":"error","req_id":req.get("req_id"),"error":"unauthorized: login required"})
                 continue
 
             fn = actions.get(act)

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from .dependencies import get_current_user
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
@@ -165,7 +166,7 @@ def build_linux(cfg: LinuxPayload) -> str:
 
 # ---- New JSON endpoints -----------------------------------------------------
 @router.post("/windows", response_class=PlainTextResponse)
-def windows_payload(cfg: WindowsPayload):
+def windows_payload(cfg: WindowsPayload, user: dict = Depends(get_current_user)):
     try:
         return build_windows(cfg)
     except HTTPException:
@@ -175,7 +176,7 @@ def windows_payload(cfg: WindowsPayload):
 
 
 @router.post("/linux", response_class=PlainTextResponse)
-def linux_payload(cfg: LinuxPayload):
+def linux_payload(cfg: LinuxPayload, user: dict = Depends(get_current_user)):
     try:
         return build_linux(cfg)
     except HTTPException:
@@ -186,18 +187,18 @@ def linux_payload(cfg: LinuxPayload):
 
 # ---- Legacy routes kept for compatibility ----------------------------------
 @router.get("/windows/ps1", response_class=PlainTextResponse)
-def win_ps1(transport: str, host: str, port: int, beacon: int = 5):
+def win_ps1(transport: str, host: str, port: int, beacon: int = 5, user: dict = Depends(get_current_user)):
     t = transport.lower()
     if t not in ("http", "https"):
         raise HTTPException(status_code=400, detail="transport must be http or https")
     cfg = WindowsPayload(format="ps1", transport=t, host=host, port=port, beacon=beacon)
-    return windows_payload(cfg)
+    return build_windows(cfg)
 
 
 @router.get("/linux/bash", response_class=PlainTextResponse)
-def linux_bash(transport: str, host: str, port: int):
+def linux_bash(transport: str, host: str, port: int, user: dict = Depends(get_current_user)):
     t = transport.lower()
     if t not in ("tcp", "http"):
         raise HTTPException(status_code=400, detail="transport must be tcp or http")
     cfg = LinuxPayload(format="bash", transport=t, host=host, port=port)
-    return linux_payload(cfg)
+    return build_linux(cfg)

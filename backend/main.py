@@ -1,5 +1,5 @@
 # backend/main.py
-import os, sys
+import os, sys, secrets
 # Ensure the project root (the parent of this file's folder) is on sys.path when run directly
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -22,25 +22,31 @@ from .websocket_console import router as ws_router
 from .websocket_gunnershell import router as gs_router
 from .websocket_files import router as files_ws_router
 from .websocket_ldap import router as ldap_ws_router
+from .auth import router as auth_router
 
 app = FastAPI(title="GunnerC2 Integrated API", version="1.0")
 
-# CORS: allow GUI app
+_cors_origins = [
+    o.strip() for o in
+    os.environ.get("GUNNER_CORS_ORIGINS", "http://127.0.0.1:6060,http://localhost:6060").split(",")
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.on_event("startup")
 def _startup():
-    # Open DB / create schema / ensure default admin if empty (auth_manager handles this gracefully)
     auth._connect()
     ops = auth.list_operators() or []
     if not ops:
-        auth.add_operator("admin", "admin", "admin")
+        password = secrets.token_urlsafe(16)
+        auth.add_operator("admin", password, "admin")
+        print(f"\n[!] Initial admin operator created. Username: admin / Password: {password}")
+        print("[!] Change this password after first login.\n")
 
 # Routers
 app.include_router(operators_ws_router)
@@ -52,6 +58,7 @@ app.include_router(payloads_router, prefix="/payloads", tags=["payloads"])
 app.include_router(ws_router, tags=["websocket"])
 app.include_router(gs_router, tags=["websocket"])
 app.include_router(ldap_ws_router, tags=["websocket"])
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("GUNNER_BACKEND_PORT", "6060")))
