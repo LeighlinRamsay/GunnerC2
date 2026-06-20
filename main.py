@@ -969,22 +969,16 @@ def process_command(user: str, to_console: bool = True, to_op: str = None):
 					for hdr in args.headers:
 						all_headers.update(hdr)
 
-					# Header keys to normalize and extract
-					key_map = {
-						"user-agent": "useragent",
-						"accept": "accept",
-						"range": "byte_range"
-					}
-
-					for k, var_name in key_map.items():
-						found_keys = [h for h in all_headers if h.lower() == k]
-
-						if found_keys:
-							if locals()[var_name] is False:  # Not explicitly set via flag
-								locals()[var_name] = all_headers[found_keys[0]]
-
-							for key in found_keys:
-								del all_headers[key]
+					for h in list(all_headers):
+						hl = h.lower()
+						if hl == "user-agent" and not useragent:
+							useragent = all_headers.pop(h)
+						elif hl == "accept" and not accept:
+							accept = all_headers.pop(h)
+						elif hl == "range" and not byte_range:
+							byte_range = all_headers.pop(h)
+						elif hl in ("user-agent", "accept", "range"):
+							del all_headers[h]
 
 				else:
 					all_headers = {}
