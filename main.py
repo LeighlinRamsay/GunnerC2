@@ -1054,7 +1054,8 @@ def process_command(user: str, to_console: bool = True, to_op: str = None):
 				stager_ip=stager_ip, stager_port=stager_port, profile=profile)
 
 		elif os_type == "linux":
-			raw = generate_payload_linux(args.local_host, args.local_port, obfuscation, format_type, payload_type, beacon_interval, headers=all_headers, useragent=useragent, accept=accept, byte_range=byte_range, jitter=jitter)
+			use_ssl = (payload_type == "https")
+			raw = generate_payload_linux(args.local_host, args.local_port, obfuscation, use_ssl, format_type, payload_type, beacon_interval, headers=all_headers, useragent=useragent, accept=accept, byte_range=byte_range, jitter=jitter)
 
 		else:
 			print(brightred + f"[!] Unsupported operating system selected!")

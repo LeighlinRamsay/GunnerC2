@@ -1,6 +1,7 @@
 # payload_generator/windows/tcp/powershell_reverse_tcp.py
 
 import base64
+import random
 from core.payload_generator.common import payload_utils as payutils
 from colorama import init, Fore, Style
 

