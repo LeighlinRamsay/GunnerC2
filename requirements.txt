@@ -7,15 +7,14 @@ cryptography>=42.0
 python-multipart>=0.0.9
 
 # Auth stack
-passlib[bcrypt]>=1.7.4,<1.8
-bcrypt==4.3.0
+bcrypt>=4.3.0
 cffi>=1.16.0
 
 # --- CLI/Utilities ---
 colorama>=0.4.6
 requests>=2.31
 pyperclip>=1.8.2
-tqdm==4.67.1
+tqdm>=4.67.1
 
 # --- GUI (PyQt5) ---
 PyQt5>=5.15.9

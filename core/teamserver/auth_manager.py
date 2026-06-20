@@ -1,14 +1,13 @@
 import logging
 logger = logging.getLogger(__name__)
 
-import os, uuid, sqlite3, threading
+import os, uuid, sqlite3, threading, secrets
 import re
 from datetime import datetime
-from passlib.context import CryptContext
+import bcrypt
 
 # where to store your DB (next to your script, or configurable)
 DB_PATH = os.path.expanduser("~/.gunnerc2/operators.db")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 write_lock = threading.Lock()
 
@@ -100,7 +99,7 @@ def add_operator(username, password, role="operator"):
                 return "ALREADY EXISTS"
 
             oid  = str(uuid.uuid4())
-            pw_h = pwd_context.hash(password)
+            pw_h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             now  = datetime.utcnow().isoformat()
             conn.execute(
             "INSERT INTO operators(id,username,password_hash,role,created_at) VALUES (?,?,?,?,?)",
@@ -135,9 +134,10 @@ def query_operatordb(action, username=""):
         return False
 
 
-def startup_useradd():
+def startup_useradd(password=None):
     username = "gunner"
-    password = "admin"
+    if password is None:
+        password = secrets.token_urlsafe(16)
     role = "admin"
     now = datetime.utcnow().isoformat()
     conn = _get_conn()
@@ -145,11 +145,11 @@ def startup_useradd():
     try:
         with cache_lock:
             if username.lower() in operators_cache:
-                return True
+                return (True, None)
 
         with write_lock:
             oid  = str(uuid.uuid4())
-            pw_h = pwd_context.hash(password)
+            pw_h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             # Atomic, case‐insensitive insert if not exists:
             conn.execute("""
                 INSERT OR IGNORE INTO operators(id, username, password_hash, role, created_at)
@@ -163,7 +163,9 @@ def startup_useradd():
                 "SELECT 1 FROM operators WHERE username = ? LIMIT 1",
                 (username,)
             )
-            return cur.fetchone() is not None
+            if cur.fetchone() is not None:
+                return (True, password)
+            return False
 
     except sqlite3.Error as e:
         logger.debug(f"{e}")
@@ -174,7 +176,7 @@ def verify_credentials(username, password):
     with cache_lock:
         entry = operators_cache.get(username.lower())
 
-        if entry and pwd_context.verify(password, entry["password_hash"]):
+        if entry and bcrypt.checkpw(password.encode(), entry["password_hash"].encode()):
             return {"id": entry["id"], "role": entry["role"]}
 
     return None
@@ -255,7 +257,7 @@ def update_operator(identifier, new_username=None, new_password=None, new_role=N
     if new_password:
         if not re.fullmatch(r"\S{1,64}", new_password):
             return "PASSWORD REGEX FAIL"
-        pw_h = pwd_context.hash(new_password)
+        pw_h = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
         fields.append("password_hash = ?")
         values.append(pw_h)
 
