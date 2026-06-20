@@ -1,5 +1,8 @@
 # backend/auth.py
-from fastapi import APIRouter, HTTPException, Depends
+import time
+from collections import defaultdict
+
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Optional
 
 from core.teamserver import auth_manager as auth
@@ -8,6 +11,10 @@ from .dependencies import create_access_token, get_current_user, get_current_adm
 from .schemas import LoginRequest, TokenResponse, OperatorCreate, OperatorOut, OperatorUpdate
 
 router = APIRouter()
+
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_MAX_ATTEMPTS = 5
+_WINDOW = 60
 
 
 def _get_operator_by_username(username: str) -> Optional[dict]:
@@ -44,11 +51,18 @@ def _get_operator_by_username(username: str) -> Optional[dict]:
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest):
+def login(body: LoginRequest, request: Request):
     """
     Accepts JSON: {"username": "...", "password": "..."}
     Normalizes the variety of return shapes from core.teamserver.auth_manager.
     """
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < _WINDOW]
+    if len(_login_attempts[ip]) >= _MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many login attempts",
+                            headers={"Retry-After": str(_WINDOW)})
+
     ok = False
     row: Optional[dict] = None
 
@@ -90,6 +104,7 @@ def login(body: LoginRequest):
             row = None
 
     if not ok or not row:
+        _login_attempts[ip].append(now)
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     # Normalize keys used by token creation
