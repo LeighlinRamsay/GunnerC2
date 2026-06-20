@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 # Command Execution Imports
 from core.command_execution import http_command_execution as http_exec
@@ -42,10 +43,10 @@ class CpCommand(Command):
 
 		if "windows" in os_type:
 			# -Force to overwrite
-			cmd = f"Copy-Item -Path \"{src}\" -Destination \"{dst}\" -Force"
+			cmd = f"Copy-Item -Path {psq(src)} -Destination {psq(dst)} -Force"
 
 		elif "linux" in os_type:
-			cmd = f"cp -f \"{src}\" \"{dst}\""
+			cmd = f"cp -f {shq(src)} {shq(dst)}"
 
 		else:
 			print(brightred + f"[!] Unsupported OS on {display}")

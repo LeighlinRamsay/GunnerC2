@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 # Command Execution Imports
 from core.command_execution import http_command_execution as http_exec
@@ -45,10 +46,10 @@ class MkdirCommand(Command):
 
 		if "windows" in os_type:
 			# PowerShell: make folder
-			cmd = f'New-Item -ItemType Directory -Force -Path "{path}"'
+			cmd = f"New-Item -ItemType Directory -Force -Path {psq(path)}"
 
 		elif "linux" in os_type:
-			cmd = f'mkdir -p "{path}"'
+			cmd = f"mkdir -p {shq(path)}"
 
 		else:
 			print(brightred + f"[!] Unsupported OS on {display}")

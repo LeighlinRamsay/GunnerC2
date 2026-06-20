@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 from colorama import Style, Fore
 brightgreen = "\001" + Style.BRIGHT + Fore.GREEN + "\002"
@@ -49,10 +50,10 @@ class CdCommand(Command):
 		# build the correct command for the OS
 		if "windows" in os_type:
 			# /d allows changing drive and directory, then print %CD%
-			cmd = f"Set-Location -LiteralPath \"{path}\"; (Get-Location).Path"
+			cmd = f"Set-Location -LiteralPath {psq(path)}; (Get-Location).Path"
 
 		elif "linux" in os_type:
-			cmd = f"cd \"{path}\" && pwd"
+			cmd = f"cd {shq(path)} && pwd"
 
 		else:
 			print(brightred + f"[!] Unsupported operating system on {display}")

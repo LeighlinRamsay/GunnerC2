@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 # Command Execution Imports
 from core.command_execution import http_command_execution as http_exec
@@ -40,10 +41,10 @@ class MvCommand(Command):
 		display = next((a for a, rsid in session_manager.alias_map.items() if rsid == sid), sid)
 
 		if "windows" in os_type:
-			cmd = f"Move-Item -LiteralPath \"{src}\" -Destination \"{dst}\" -Force"
+			cmd = f"Move-Item -LiteralPath {psq(src)} -Destination {psq(dst)} -Force"
 
 		elif "linux" in os_type:
-			cmd = f"mv -f \"{src}\" \"{dst}\""
+			cmd = f"mv -f {shq(src)} {shq(dst)}"
 
 		else:
 			print(brightred + f"[!] Unsupported OS on {display}")

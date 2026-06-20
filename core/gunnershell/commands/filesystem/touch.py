@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 # Command Execution Imports
 from core.command_execution import http_command_execution as http_exec
@@ -44,10 +45,10 @@ class TouchCommand(Command):
 		display = next((a for a, rsid in session_manager.alias_map.items() if rsid == sid), sid)
 
 		if "windows" in os_type:
-			cmd = f'if (Test-Path "{path}") {{ (Get-Item "{path}").LastWriteTime = Get-Date }} else {{ New-Item -ItemType File -Force -Path "{path}" }}'
+			cmd = f"if (Test-Path {psq(path)}) {{ (Get-Item {psq(path)}).LastWriteTime = Get-Date }} else {{ New-Item -ItemType File -Force -Path {psq(path)} }}"
 
 		elif "linux" in os_type:
-			cmd = f'touch "{path}"'
+			cmd = f"touch {shq(path)}"
 
 		else:
 			print(brightred + f"[!] Unsupported OS on {display}")

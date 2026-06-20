@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 from colorama import Style, Fore
 brightgreen = "\001" + Style.BRIGHT + Fore.GREEN + "\002"
@@ -47,10 +48,10 @@ class CatCommand(Command):
 		# build the correct command for the OS
 		if "windows" in os_type:
 			# PowerShell: get the file contents
-			cmd = f"Get-Content -LiteralPath \"{path}\""
+			cmd = f"Get-Content -LiteralPath {psq(path)}"
 
 		elif "linux" in os_type:
-			cmd = f"cat \"{path}\""
+			cmd = f"cat {shq(path)}"
 
 		else:
 			print(brightred + f"[!] Unsupported operating system on {display}")

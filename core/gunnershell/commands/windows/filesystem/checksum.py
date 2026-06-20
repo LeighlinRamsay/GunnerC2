@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 
 # Command Execution Imports
 from core.command_execution import http_command_execution as http_exec
@@ -40,10 +41,10 @@ class ChecksumCommand(Command):
 		display = next((a for a, rsid in session_manager.alias_map.items() if rsid == sid), sid)
 
 		if "windows" in os_type:
-			cmd = f"(Get-FileHash -Algorithm SHA256 -Path \"{path}\").Hash"
+			cmd = f"(Get-FileHash -Algorithm SHA256 -Path {psq(path)}).Hash"
 
 		elif "linux" in os_type:
-			cmd = f"sha256sum \"{path}\""
+			cmd = f"sha256sum {shq(path)}"
 
 		else:
 			print(brightred + f"[!] Unsupported OS on {display}")

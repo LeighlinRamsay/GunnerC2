@@ -1,7 +1,7 @@
 from core.gunnershell.commands.base import register, Command, QuietParser
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq
 from colorama import Style, Fore
-import shlex
 
 brightgreen = "\001" + Style.BRIGHT + Fore.GREEN + "\002"
 brightyellow = "\001" + Style.BRIGHT + Fore.YELLOW + "\002"
@@ -53,6 +53,6 @@ class LsCommand(Command):
         if ns.a: flags.append("-a")
         if ns.l: flags.append("-l")
         if ns.h: flags.append("-h")
-        target = shlex.quote(ns.path) if ns.path else ""
+        target = shq(ns.path) if ns.path else ""
         cmd = f"ls {' '.join(flags)} {target}".strip()
         return _run(sid, cmd, op_id=op_id)

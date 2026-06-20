@@ -1,5 +1,6 @@
 from core.gunnershell.commands.base import register, Command
 from core.session_handlers import session_manager
+from core.utils_shell_quoting import shq, psq
 from colorama import Style, Fore
 
 brightgreen = "\001" + Style.BRIGHT + Fore.GREEN + "\002"
@@ -41,10 +42,10 @@ class LsCommand(Command):
 
 		if "windows" in os_type:
 			# /B gives bare format, /A shows all files (including hidden)
-			cmd = f"Get-ChildItem \"{path}\""
+			cmd = f"Get-ChildItem {psq(path)}"
 
 		elif "linux" in os_type:
-			cmd = f"ls -la \"{path}\""
+			cmd = f"ls -la {shq(path)}"
 
 		else:
 			print(brightred + f"[!] Unsupported operating system on {display}")
