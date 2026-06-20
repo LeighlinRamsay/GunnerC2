@@ -54,11 +54,7 @@ def _b64_to_bytes(s: str) -> bytes:
 		return b""
 	return base64.b64decode(s.encode(), validate=False)
 
-def _ps_quote(s: str) -> str:
-	return "'" + str(s).replace("'", "''") + "'"
-
-def _linux_shq(s: str) -> str:
-	return "'" + str(s).replace("'", "'\"'\"'") + "'"
+from core.utils_shell_quoting import psq as _ps_quote, shq as _linux_shq
 
 def _parse_int(s: str, default: int = 0) -> int:
 	try:

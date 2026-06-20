@@ -1,5 +1,1 @@
-def _psq(s: str) -> str:
-    return "'" + str(s).replace("'", "''") + "'"
-
-def _shq(s: str) -> str:
-    return "'" + str(s).replace("'", "'\"'\"'") + "'"
+from core.utils_shell_quoting import psq as _psq, shq as _shq
