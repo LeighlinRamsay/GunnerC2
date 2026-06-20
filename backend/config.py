@@ -7,7 +7,9 @@ import pathlib
 def _load_or_create_secret():
     secret_path = pathlib.Path(os.path.expanduser("~/.gunnerc2/jwt_secret"))
     if secret_path.is_file() and secret_path.stat().st_size > 0:
-        return secret_path.read_text().strip()
+        key = secret_path.read_text().strip()
+        if len(key) >= 32:
+            return key
     secret_path.parent.mkdir(parents=True, exist_ok=True)
     key = secrets.token_hex(32)
     secret_path.write_text(key)
