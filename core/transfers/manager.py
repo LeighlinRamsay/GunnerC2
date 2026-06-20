@@ -691,7 +691,7 @@ class TransferManager:
 
 			if st.is_folder:
 				# Extract archive remotely then delete it
-				from .protocols.shell import _run_cmd
+				proto = self._protocol(op_id=opts.to_op if opts else None, timeout=st.options.get("timeout"))
 				dest = st.options.get("extract_dest") or self._remote_dir_of(st.remote_path, st.os_type)
 				logger.debug(f"UL[{st.tid}] extracting on agent to {dest!r}")
 
@@ -704,7 +704,7 @@ class TransferManager:
 						f"Expand-Archive -LiteralPath {psq(st.remote_path)} -DestinationPath $dest -Force;"
 						f"Remove-Item -LiteralPath {psq(st.remote_path)} -Force"
 					)
-					_run_cmd(st.sid, ps, st.transport, opts.to_op)
+					proto._run_cmd(st.sid, ps, st.transport, proto.op_id)
 				else:
 					def shq(s: str) -> str: return "'" + str(s).replace("'", "'\"'\"'") + "'"
 					sh = (
@@ -712,7 +712,7 @@ class TransferManager:
 						f"tar xzf {shq(st.remote_path)} -C {shq(dest)} && "
 						f"rm -f {shq(st.remote_path)}"
 					)
-					_run_cmd(st.sid, f"bash -lc \"{sh}\"", st.transport, opts.to_op)
+					proto._run_cmd(st.sid, f"bash -lc \"{sh}\"", st.transport, proto.op_id)
 
 				# Clean up local pack temp (archive and folder)
 				try:
