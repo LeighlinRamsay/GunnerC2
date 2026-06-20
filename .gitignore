@@ -8,3 +8,4 @@ build/
 *.log
 CLAUDE.md
 .claude/
+scripts/
