@@ -295,6 +295,8 @@ def process_command(user: str, to_console: bool = True, to_op: str = None):
 
 			session = session_manager.sessions[sid]
 
+			timeout = None
+
 			if session.transport.lower() in ("http", "https") and not parsed_args.timeout:
 				print(brightyellow + f"You must specify a timeout for HTTP/HTTPS transfers (Use 2x your interval, 3x if jitter is big)")
 				return
@@ -372,6 +374,8 @@ def process_command(user: str, to_console: bool = True, to_op: str = None):
 			if not session:
 				print(brightred + f"Invalid session or alias: {parsed_args.i}")
 				return
+
+			timeout = None
 
 			if session.transport.lower() in ("http", "https") and not parsed_args.timeout:
 				print(brightyellow + f"You must specify a timeout for HTTP/HTTPS transfers (Use 2x your interval, 3x if jitter is big)")
@@ -1790,9 +1794,8 @@ def operator_loop():
 		delete_history_file()
 
 def teamserver():
-	userstart = auth.startup_useradd()
-
-	if not userstart:
+	auth._connect()
+	if auth.list_operators() is None:
 		print(brightred + "Teamserver failed to start, delete ~/.gunnerc2/operators.db")
 		return "KILL"
 
