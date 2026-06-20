@@ -10,6 +10,11 @@ from . import config
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+_revoked_user_ids: set = set()
+
+def revoke_user(uid: str):
+    _revoked_user_ids.add(uid)
+
 def create_access_token(data: dict, expires_minutes: Optional[int] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=expires_minutes or config.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -22,6 +27,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         uid = payload.get("sub"); username = payload.get("username"); role = payload.get("role")
         if not (uid and username and role):
             raise HTTPException(status_code=401, detail="Invalid token payload")
+        if uid in _revoked_user_ids:
+            raise HTTPException(status_code=401, detail="Token has been revoked")
         return {"id": uid, "username": username, "role": role}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")

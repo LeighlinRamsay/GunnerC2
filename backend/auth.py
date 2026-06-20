@@ -4,7 +4,7 @@ from typing import Optional
 
 from core.teamserver import auth_manager as auth
 
-from .dependencies import create_access_token, get_current_user, get_current_admin
+from .dependencies import create_access_token, get_current_user, get_current_admin, revoke_user
 from .schemas import LoginRequest, TokenResponse, OperatorCreate, OperatorOut, OperatorUpdate
 
 router = APIRouter()
@@ -133,4 +133,5 @@ def delete_operator(operator_id: str, user: dict = Depends(get_current_admin)):
     ok = auth.delete_operator(operator_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Operator not found")
+    revoke_user(operator_id)
     return {"status": "deleted", "id": operator_id}
