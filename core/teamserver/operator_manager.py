@@ -11,6 +11,8 @@ import json
 import hashlib
 import fnmatch
 import sys
+import secrets
+import pathlib
 from core.teamserver import auth_manager as auth
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from colorama import init, Fore, Style
@@ -29,7 +31,19 @@ lockout_lock = threading.Lock()
 shutdown_event = threading.Event()
 LOCKOUT_FILE = os.path.expanduser("~/.gunnerc2/lockouts.json")
 
-_SECRET = "Sh3DNNG7km6W0nVIQVdl6L1Zyeg76v80OZT0ghritXsvuAuLqiN6VZMT5NNFfp0W"
+def _load_or_create_operator_secret():
+    secret_path = pathlib.Path(os.path.expanduser("~/.gunnerc2/operator_secret"))
+    if secret_path.is_file() and secret_path.stat().st_size > 0:
+        secret = secret_path.read_text().strip()
+        if secret:
+            return secret
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+    key = secrets.token_hex(32)
+    secret_path.write_text(key)
+    os.chmod(secret_path, 0o600)
+    return key
+
+_SECRET = _load_or_create_operator_secret()
 _KEY    = hashlib.sha256(_SECRET.encode()).digest()
 _AESGCM = AESGCM(_KEY)
 
