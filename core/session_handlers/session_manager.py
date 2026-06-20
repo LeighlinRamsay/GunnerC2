@@ -141,6 +141,7 @@ def kill_http_session(sid, os_type, beacon_interval=False):
 
     else:
         print(brightred + f"[!] Cannot kill session for unsupported operating system!")
+        return False
 
     b64_cmd = base64.b64encode(kill_snippet.encode()).decode()
 
