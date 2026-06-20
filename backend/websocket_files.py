@@ -67,11 +67,7 @@ def _run_remote(sid: str, cmd: str, transport: str, timeout: float | None = 10.0
 						 "cmd_preview": preview, "out_len": len(out)})
 	return out
 
-def _psq(s: str) -> str:
-	return "'" + str(s).replace("'", "''") + "'"
-
-def _shq(s: str) -> str:
-	return "'" + str(s).replace("'", "'\"'\"'") + "'"
+from .utils import _psq, _shq
 
 # ----------------- websocket route -----------------
 @router.websocket("/ws/files")
@@ -258,10 +254,11 @@ async def files_ws(ws: WebSocket):
 
 			else:
 				# no `set -e` so we can emit explicit OK/ERR messages
+				allow_flag = "1" if allow_dir else "0"
 				sh = (
 					"bash -lc " +
 					_shq(
-						'P=%s; ALLOW=%s; '
+						f'P={_shq(target)}; ALLOW={allow_flag}; '
 						'if [ ! -e "$P" ]; then echo MISSING; exit 0; fi; '
 						'if [ -d "$P" ]; then '
 						'  if [ "$ALLOW" = "1" ]; then '
@@ -272,7 +269,7 @@ async def files_ws(ws: WebSocket):
 						'else '
 						'  if rm -f -- "$P"; then echo OK:F; else echo ERR:rm_file_failed; fi; '
 						'fi'
-					) % (target, "1" if allow_dir else "0")
+					)
 				)
 				out = _run_remote(sid, sh, transport, log=log, defender_bypass=True)
 
@@ -874,14 +871,14 @@ async def files_ws(ws: WebSocket):
 				sh = (
 					"bash -lc " +
 					_shq(
-						"set -e; P=%s; D=$(dirname \"$P\"); (mkdir -p \"$D\" 2>/dev/null || true); "
+						f"set -e; P={_shq(target_file)}; D=$(dirname \"$P\"); (mkdir -p \"$D\" 2>/dev/null || true); "
 						"if [ -e \"$P\" ]; then "
 						"  [ -w \"$P\" ] && echo OK || echo DENIED:file_not_writable;"
 						"else "
 						"  T=\"$D/.ulperm.$$\"; if : > \"$T\" 2>/dev/null; then rm -f \"$T\"; echo OK; "
 						"  else echo DENIED:dir_not_writable; fi;"
 						"fi"
-					) % target_file
+					)
 				)
 				out = _run_remote(sid, sh, transport, log=log) or ""
 				return ("OK" in out), out.strip()

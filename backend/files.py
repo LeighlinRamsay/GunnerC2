@@ -11,6 +11,7 @@ from core.command_execution import http_command_execution as http_exec
 from core.command_execution import tcp_command_execution as tcp_exec
 
 from .schemas import FileInfo
+from .utils import _psq, _shq
 
 router = APIRouter()
 
@@ -33,7 +34,7 @@ def list_dir(sid: str, path: str = Query(default="."), op_id: str = "console"):
     if "win" in os_type:
         ps = (
             "powershell -NoProfile -Command "
-            f"\"Try {{ Get-ChildItem -LiteralPath '{path}' -Force | "
+            f"\"Try {{ Get-ChildItem -LiteralPath {_psq(path)} -Force | "
             "Select-Object Name,Length,Mode | ConvertTo-Json -Depth 2 }} "
             "Catch { '' }\""
         )
@@ -54,7 +55,7 @@ def list_dir(sid: str, path: str = Query(default="."), op_id: str = "console"):
             lines = [l.strip() for l in raw.splitlines() if l.strip()]
             return [{"name": l, "is_dir": l.endswith("\\"), "size": None} for l in lines]
     else:
-        sh = f"bash -lc \"ls -1Ap -- '{path}' || true\""
+        sh = f"bash -lc \"ls -1Ap -- {_shq(path)} || true\""
         raw = _exec(sid, sh, op_id=op_id).strip()
         items = []
         for name in [l.strip() for l in raw.splitlines() if l.strip()]:
@@ -74,11 +75,11 @@ def download_file(sid: str, path: str, op_id: str = "console"):
         ps = (
             "powershell -NoProfile -Command "
             f"\"[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
-            f"[Convert]::ToBase64String([IO.File]::ReadAllBytes('{path}'))\""
+            f"[Convert]::ToBase64String([IO.File]::ReadAllBytes({_psq(path)}))\""
         )
         b64 = _exec(sid, ps, op_id=op_id, timeout=90.0).strip()
     else:
-        sh = f"bash -lc \"base64 -w0 -- '{path}' 2>/dev/null || base64 --wrap=0 -- '{path}'\""
+        sh = f"bash -lc \"base64 -w0 -- {_shq(path)} 2>/dev/null || base64 --wrap=0 -- {_shq(path)}\""
         b64 = _exec(sid, sh, op_id=op_id, timeout=90.0).strip()
 
     try:
@@ -101,11 +102,11 @@ async def upload_file(sid: str, path: str, file: UploadFile = File(...), op_id: 
     if "win" in os_type:
         ps = (
             "powershell -NoProfile -Command "
-            f"\"$b=[Convert]::FromBase64String('{b64}'); [IO.File]::WriteAllBytes('{path}',$b)\""
+            f"\"$b=[Convert]::FromBase64String({_psq(b64)}); [IO.File]::WriteAllBytes({_psq(path)},$b)\""
         )
         _ = _exec(sid, ps, op_id=op_id, timeout=180.0)
     else:
-        sh = f"bash -lc \"echo '{b64}' | base64 -d > '{path}'\""
+        sh = f"bash -lc \"echo {_shq(b64)} | base64 -d > {_shq(path)}\""
         _ = _exec(sid, sh, op_id=op_id, timeout=180.0)
 
     return {"status": "uploaded", "path": path}
