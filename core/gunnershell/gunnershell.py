@@ -13,7 +13,7 @@ import posixpath
 import argparse
 from core.module_loader import load_module, discover_module_files, search_modules, MODULE_DIR as BASE_MODULE_DIR
 from core.session_handlers.session_manager import resolve_sid
-from core.utils import print_help, print_gunnershell_help
+from core.utils import print_help, print_gunnershell_help, defender
 from core.help_menus import gunnershell_commands_windows, gunnershell_commands_linux
 from core import shell, portfwd, utils
 from core.session_handlers import session_manager
