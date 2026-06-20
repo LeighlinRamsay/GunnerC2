@@ -6,6 +6,8 @@ import re
 from datetime import datetime
 import bcrypt
 
+_DUMMY_HASH = bcrypt.hashpw(b"dummy", bcrypt.gensalt()).decode()
+
 # where to store your DB (next to your script, or configurable)
 DB_PATH = os.path.expanduser("~/.gunnerc2/operators.db")
 
@@ -175,10 +177,10 @@ def startup_useradd(password=None):
 def verify_credentials(username, password):
     with cache_lock:
         entry = operators_cache.get(username.lower())
-
-        if entry and bcrypt.checkpw(password.encode(), entry["password_hash"].encode()):
-            return {"id": entry["id"], "role": entry["role"]}
-
+    pw_hash = entry["password_hash"] if entry else _DUMMY_HASH
+    valid = bcrypt.checkpw(password.encode(), pw_hash.encode())
+    if entry and valid:
+        return {"id": entry["id"], "role": entry["role"]}
     return None
 
 def list_operators():
